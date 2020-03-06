@@ -37,7 +37,7 @@ def get_category_last_page(lib_domain, category_path):
 def get_books_url(lib_domain, category_path, start_page, end_page):
     category_url = urljoin(lib_domain, category_path)
     books_url = []
-    for page in range(start_page, end_page+1):
+    for page in range(start_page, end_page + 1):
         response = requests.get(urljoin(category_url, "{}/".format(page)), allow_redirects=False)
         response.raise_for_status()
         category_soup = BeautifulSoup(response.text, 'lxml')
@@ -93,51 +93,52 @@ def download_img(url, filename, folder='images/'):
     return out_path
 
 
-lib_domain = "http://tululu.org"
-category_path = "l55/"
-book_txt_url = urljoin(lib_domain, "txt.php?id={}")
+if __name__ == '__main__':
+    lib_domain = "http://tululu.org"
+    category_path = "l55/"
+    book_txt_url = urljoin(lib_domain, "txt.php?id={}")
 
-books_dir = "books/"
-images_dir = "images/"
-[Path(folder).mkdir(parents=True, exist_ok=True) for folder in [books_dir, images_dir]]
+    books_dir = "books"
+    images_dir = "images"
+    [Path(folder).mkdir(parents=True, exist_ok=True) for folder in [books_dir, images_dir]]
 
-downloaded_books_info_path = "books.json"
-downloaded_books_info = []
+    downloaded_books_info_path = "books.json"
+    downloaded_books_info = []
 
-parser = create_parser()
-namespace = parser.parse_args()
-start_page, end_page = namespace.start_page, namespace.end_page
-if end_page is None:
-    end_page = get_category_last_page(lib_domain, category_path)
+    parser = create_parser()
+    namespace = parser.parse_args()
+    start_page, end_page = namespace.start_page, namespace.end_page
+    if end_page is None:
+        end_page = get_category_last_page(lib_domain, category_path)
 
-books_url = get_books_url(lib_domain, category_path, start_page, end_page)
-for book_url in books_url:
-    response = requests.get(book_url, allow_redirects=False)
-    response.raise_for_status()
+    books_url = get_books_url(lib_domain, category_path, start_page, end_page)
+    for book_url in books_url:
+        response = requests.get(book_url, allow_redirects=False)
+        response.raise_for_status()
 
-    book_soup = BeautifulSoup(response.text, 'lxml')
-    book_head = book_soup.select_one("#content h1").text
-    book_title, book_author = [part.strip() for part in book_head.split("::")]
+        book_soup = BeautifulSoup(response.text, 'lxml')
+        book_head = book_soup.select_one("#content h1").text
+        book_title, book_author = [part.strip() for part in book_head.split("::")]
 
-    book_id = urlparse(book_url).path.strip("/b")
-    book_path = download_txt(book_txt_url.format(book_id), book_title + '.txt')
-    if book_path is None:
-        continue
-
-    book_image_url = urljoin(lib_domain, book_soup.select_one(".bookimage img")['src'])
-    book_image_name = book_image_url.split('/')[-1]
-    book_reviews_raw = book_soup.select(".texts .black")
-    book_reviews = [review.text for review in book_reviews_raw]
-    book_genres_raw = book_soup.select("span.d_book a")
-    book_genres = [book_genre.text for book_genre in book_genres_raw]
-    img_path = download_img(book_image_url, book_image_name)
-    downloaded_books_info.append({})
-    downloaded_books_info[-1]["title"] = book_title
-    downloaded_books_info[-1]["author"] = book_author
-    downloaded_books_info[-1]["img_src"] = img_path
-    downloaded_books_info[-1]["book_path"] = book_path
-    downloaded_books_info[-1]["book_reviews"] = book_reviews
-    downloaded_books_info[-1]["book_genres"] = book_genres
-
-with open(downloaded_books_info_path, "w", encoding='utf8') as file:
-    json.dump(downloaded_books_info, file, ensure_ascii=False)
+        book_id = urlparse(book_url).path.strip("/b")
+        book_path = download_txt(book_txt_url.format(book_id), book_title + '.txt')
+        if book_path is None:
+            continue
+        # Повысьте надёжность вычисления URL? Что понадобится: urllib.parse.urljoin
+        book_image_url = urljoin(lib_domain, book_soup.select_one(".bookimage img")['src'])
+        book_image_name = book_image_url.split('/')[-1]
+        book_reviews_raw = book_soup.select(".texts .black")
+        book_reviews = [review.text for review in book_reviews_raw]
+        book_genres_raw = book_soup.select("span.d_book a")
+        book_genres = [book_genre.text for book_genre in book_genres_raw]
+        img_path = download_img(book_image_url, book_image_name)
+        book_info = {"title": book_title,
+                     "author": book_author,
+                     "img_src": img_path,
+                     "book_path": book_path,
+                     "book_reviews": book_reviews,
+                     "book_genres": book_genres
+                     }
+        downloaded_books_info.append(book_info)
+    with open(downloaded_books_info_path, "w", encoding='utf8') as file:
+        json.dump(downloaded_books_info, file, ensure_ascii=False)
