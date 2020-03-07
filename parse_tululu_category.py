@@ -102,8 +102,8 @@ if __name__ == '__main__':
     images_dir = "images"
     [Path(folder).mkdir(parents=True, exist_ok=True) for folder in [books_dir, images_dir]]
 
-    downloaded_books_info_path = "books.json"
-    downloaded_books_info = []
+    summary_path = "books.json"
+    summary = []
 
     parser = create_parser()
     namespace = parser.parse_args()
@@ -124,8 +124,7 @@ if __name__ == '__main__':
         book_path = download_txt(book_txt_url.format(book_id), book_title + '.txt')
         if book_path is None:
             continue
-        # Повысьте надёжность вычисления URL? Что понадобится: urllib.parse.urljoin
-        book_image_url = urljoin(lib_domain, book_soup.select_one(".bookimage img")['src'])
+        book_image_url = urljoin(book_url, book_soup.select_one(".bookimage img")['src'])
         book_image_name = book_image_url.split('/')[-1]
         book_reviews_raw = book_soup.select(".texts .black")
         book_reviews = [review.text for review in book_reviews_raw]
@@ -139,6 +138,6 @@ if __name__ == '__main__':
                      "book_reviews": book_reviews,
                      "book_genres": book_genres
                      }
-        downloaded_books_info.append(book_info)
-    with open(downloaded_books_info_path, "w", encoding='utf8') as file:
-        json.dump(downloaded_books_info, file, ensure_ascii=False)
+        summary.append(book_info)
+    with open(summary_path, "w", encoding='utf8') as file:
+        json.dump(summary, file, ensure_ascii=False)
